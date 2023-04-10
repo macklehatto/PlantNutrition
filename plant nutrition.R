@@ -11,10 +11,19 @@ library(gridExtra)
 install.packages("report")
 library("easystats")
 library("report")
+install.packages("prettydoc")
 
 data <- read_xlsx(
   here( "","Data.xlsx")
 )
+
+dat <- data %>%  
+  replace(is.na(.), 0) %>%
+  mutate(wetroottoshoot = RootWetWeight / ShootWetWeight) %>%
+  mutate(dryroottoshoot = RootDryWeight / ShootDryWeight)
+
+spp <- unique(dat$Species)
+  
 
 lespedeza <- data %>% replace(is.na(.),0) %>% filter(Species == "Lespedeza")
   
@@ -23,6 +32,13 @@ lespedeza$`RootDryWeight` <- as.numeric(lespedeza$`RootDryWeight`)
 dalea <- data %>% replace(is.na(.),0) %>% filter(Species == "Dalea")
 
 tuberosa <- data %>% replace(is.na(.),0) %>% filter(Species == "Asclepiastuberosa")
+
+AMCA <- data %>% 
+  replace(is.na(.),0) %>% 
+  filter(Species == "Amorpha")
+
+AMCA$wetroottoshoot = AMCA$RootWetWeight / AMCA$ShootWetWeight
+AMCA$dryroottoshoot = AMCA$RootDryWeight / AMCA$ShootDryWeight
 
 #leca <- ggplot(lespedeza, aes(roottoshoot))
 
@@ -165,6 +181,25 @@ qqPlot(res_aov_log_astu$residuals,
 )
 
 shapiro.test(res_aov_log_astu$residuals) #fail at p = 0.46
+
+#AMCA
+res_aov_AMCA_rootshoot <- aov(dryroottoshoot ~ Rate,
+                              data = AMCA)
+
+par(mfrow = c(1,2))
+
+hist(res_aov_AMCA_rootshoot$residuals)
+
+qqPlot(res_aov_AMCA_rootshoot$residuals,
+       id = FALSE
+)
+
+shapiro.test(res_aov_AMCA_rootshoot$residuals) # ASTU IS NORMAL p-value = 3.065e-06
+
+res_aov_AMCA <- aov(dryroottoshoot ~ Rate, 
+                    data = AMCA
+                    )
+report(res_aov_AMCA)
 
 
 ## root-shoot correlations
