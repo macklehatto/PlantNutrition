@@ -8,9 +8,7 @@ output:
     highlight: github
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
 ```{r "setup", echo=FALSE, error=TRUE, include=FALSE}
 
@@ -43,6 +41,10 @@ spp <- unique(dat$Species)
 
 ```
 
+## These tabs contain the initial data analysis results: {.tabset}
+
+### Is the root:shoot data normal? And ANOVA report
+
 ```{r, echo=FALSE}
 
 ##Is the data normal?
@@ -53,8 +55,8 @@ fun_shapiro <- for(i in 1:length(spp)){
   
   res_aov <- filter(dat, Species == sp) 
      
-  res_aov1 <- aov(dryroottoshoot ~ Rate,
-               data = res_aov)
+  res_aov1 <- (aov(dryroottoshoot ~ Rate,
+               data = res_aov))
 
   par(mfrow = c(1,2))
 
@@ -67,10 +69,67 @@ fun_shapiro <- for(i in 1:length(spp)){
           )
 
   print(paste0(sp, ":"))
+  cat("Sample Size: " , nrow(res_aov), "\n") 
   print(report(res_aov1))
 } 
 
 ```
+
+### Root:Shoot Correlations {.tabset}
+
+```{r, echo=FALSE}
+
+corrbase <- ggplot(dat, aes(x=`RootDryWeight`, y= `ShootDryWeight`, color=Rate)) +
+      geom_point(size = 0.5) +
+      geom_smooth(method="lm", fill= NA)+
+      xlab("Root Dry Weight") +
+      ylab("Shoot Dry Weight") +
+      ggtitle("Root to Shoot Correlation Graphs")
+
+corrbase + facet_wrap(~Species, ncol = 2)
+
+
+```
+
+###
+
+```{r, echo=FALSE}
+
+fun_box <- for(i in 1:length(spp)){
+  
+  sp <- assign(paste0("",i), spp[[i]])
+  
+  boxdat <- filter(dat, Species == sp) 
+  
+boxbase <- ggplot(boxdat, aes(y = dryroottoshoot, x= Rate, fill = Rate))+
+  geom_boxplot() +
+  #xlab(paste0("",i)) +
+  ylab('Root to Shoot Ratio') +
+  ggtitle(paste0(sp)) +
+  scale_fill_discrete(name = "Osmocote Rates")+
+  geom_jitter(aes(col = Rate), size= 1.5, alpha=0.9, width = 0.2) #+
+  #scale_x_discrete(breaks = c('Asclepiastuberosa', 'Lespedeza'),
+  #                 labels = c("ASTU", "LECA"))
+
+print(boxbase)
+
+
+}
+
+
+boxbase <- ggplot(dat, aes(y = dryroottoshoot, x= Rate, fill = Rate))+
+  geom_boxplot() +
+  ylab('Root to Shoot Ratio') +
+  ggtitle("Root to Shoot Ratios") +
+  scale_fill_discrete(name = "Osmocote Rates")#+
+  #geom_jitter(aes(col = Rate), size= 1.5, alpha=0.9, width = 0.2) #+
+  #scale_x_discrete(breaks = c('Asclepiastuberosa', 'Lespedeza'),
+  #                 labels = c("ASTU", "LECA"))
+
+boxbase + facet_wrap(~Species, ncol = 2)
+
+```
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
