@@ -1,0 +1,247 @@
+---
+title: "Plant Nutrition Analysis"
+author: "Meghan Manhatton"
+date: "2023-04-16"
+output: 
+  prettydoc::html_pretty:
+    theme: leonids
+    highlight: github
+---
+
+
+
+```{r "setup", echo=FALSE, error=TRUE, include=FALSE}
+
+# install.packages("prettydoc")
+# install.packages("report")
+# install.packages("ggpubr")
+# install.packages("car")
+# install.packages("ggdist")
+# install.packages("gghalves")
+# install.packages("colorspace")
+# install.packages("ggtext")
+library(here)
+library(readxl)
+library(ggplot2)
+library(tidyverse)
+library(car)
+library(ggpubr)
+library(gridExtra)
+library("easystats")
+library("report")
+library(ggdist)
+library(gghalves)
+library(colorspace)
+library(ggtext)
+
+
+data <- read_xlsx(
+  here( "","Data.xlsx")
+)
+
+dat <- data %>%  
+  replace(is.na(.), 0) %>%
+  mutate(wetroottoshoot = RootWetWeight / ShootWetWeight) %>%
+  mutate(dryroottoshoot = RootDryWeight / ShootDryWeight) %>%
+  arrange(Species)
+
+spp <- unique(dat$Species)
+
+```
+
+## How is the root to shoot ratio data distributed?
+
+```{r, echo=FALSE, warning=FALSE}
+pal <- c("#FF8C00", "#A034F0", "#159090")
+
+add_sample <- function(x){
+   return(c(y = max(x) + .025, 
+            label = length(x)))
+}
+
+fun_rain <- for(i in 1:length(spp)){
+  
+  sp <- assign(paste0("",i), spp[[i]])
+  
+  raindat <- filter(dat, Species == sp) 
+  
+rain <- ggplot(raindat, aes(y = dryroottoshoot, x= Rate, fill = Rate))+
+  stat_halfeye(
+    aes(color = Rate,
+        fill = after_scale(lighten(color, .5))),
+    adjust = .5,
+    .width = 0,
+    width = .6,
+    justification = -.3,
+    point_color = NA
+  ) +
+  geom_boxplot(
+    aes(color = Rate,
+        color = after_scale(darken(color, .1, space = "HLS")),
+        fill = after_scale(desaturate(lighten(color, .8), .4))),
+     width = .095,
+    outlier.shape = NA
+  ) +
+  geom_point(
+    aes(color = Rate,
+        color = after_scale(darken(color, .1, space = "HLS"))),
+    fill = "white",
+    shape = 21,
+    stroke = .4,
+    size = 2,
+    position = position_jitter(seed = 1, width = .12)
+  ) +
+  geom_point(
+    aes(fill = Rate),
+    color = "transparent",
+    shape = 21,
+    stroke = .4,
+    size = 2,
+    alpha = .3,
+    position = position_jitter(seed = 1, width = .12)
+  ) +
+   stat_summary(
+    geom = "text",
+    fun = "median",
+    aes(label = round(..y.., 2),
+        color = Rate,
+        color = after_scale(darken(color, .1, space = "HLS"))),
+    family = "Roboto Condensed",
+    fontface = "bold",
+    size = 4.5,
+    vjust = -3.5
+  ) +
+ stat_summary(
+    geom = "text",
+    fun.data = add_sample,
+    aes(label = paste("n =", ..label..),
+        color = Rate,
+        color = after_scale(darken(color, .1, space = "HLS"))),
+    family = "Roboto Condensed",
+    size = 4,
+    hjust = 5,
+    vjust = -1.5,
+  ) +
+ coord_flip() +
+  #annotation_custom(pic, ymin = 2.9, ymax = 3.85, xmin = 2.7, xmax = 4.7) #+
+  scale_y_continuous(
+   # limits = c(0, 2.6),
+   # breaks = seq(0.4, 2.4, by = .2)
+   #expand_limits(y = c(0,6))
+ )+
+  scale_color_manual(values = pal, guide = "none") +
+  scale_fill_manual(values = pal, guide = "none") +
+  labs(
+    y = "Root to Shoot Ratio",
+    title = "Root to Shoot Ratios for High and Low Osmocote Rates",
+    subtitle = (paste0("", sp)),
+    caption = "Meghan Manhatton, April 2023"
+  ) +
+  theme_minimal(base_family = "leonids", base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(family = "Roboto"),
+    axis.text.y = element_text(
+      color = rev(darken(pal, .1, space = "HLS")), 
+      size = 14
+    ),
+    axis.title.x = element_text(margin = margin(t = 10),
+                                size = 12),
+    plot.title = element_markdown(face = "bold", size = 13),
+    plot.subtitle = element_text(
+      color = "grey40", hjust = 0,
+      margin = margin(0, 0, 20, 0)
+    ),
+    plot.title.position = "plot",
+    plot.caption = element_markdown(
+      color = "grey40", lineheight = 1.2,
+      margin = margin(20, 0, 0, 0)),
+    plot.margin = margin(15, 15, 10, 15)
+  )
+ 
+ 
+print(rain)
+
+}
+
+```
+
+
+## Shapiro Test and ANOVA Results
+### Is the root to shoot ratio data normal? Is the difference significant? 
+
+```{r, echo=FALSE, warning=FALSE}
+
+##Is the data normal?
+
+fun_shapiro <- for(i in 1:length(spp)){
+  
+  sp <- assign(paste0("",i), spp[[i]])
+  
+  res_aov <- filter(dat, Species == sp) 
+     
+  res_aov1 <- (aov(dryroottoshoot ~ Rate,
+               data = res_aov))
+
+  par(mfrow = c(1,2))
+
+  hist(res_aov1$residuals,
+       ylab = "residuals",
+       main = paste0(sp," residuals"))
+
+  qqPlot(res_aov1$residuals,
+           id = FALSE
+          )
+
+  print(paste0(sp, ":"))
+  cat("Sample Size: " , nrow(res_aov), "\n") 
+  print(report(res_aov1))
+} 
+
+```
+
+## Root to Shoot Correlations
+### Is the change in root to shoot ratio strongly driven by a change in the root mass or shoot mass?
+#### The charts below show the root mass on the x-axis and the shoot mass on the y-axis. If one or the other (root or shoot) were having an outsized effect on the ratio, I would expect the slope of the line to be different between the two treatments. They're remarkably similar with the exception of the high rate of Leca. 
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+corrbase <- ggplot(dat, aes(x=`RootDryWeight`, y= `ShootDryWeight`, color=Rate)) +
+      geom_point(size = 0.5) +
+      geom_smooth(method="lm", fill= NA)+
+      xlab("Root Dry Weight") +
+      ylab("Shoot Dry Weight") +
+      ggtitle("Root to Shoot Correlation Graphs")
+
+corrbase + facet_wrap(~Species, ncol = 2)
+
+```
+
+
+
+```{r, echo=FALSE, warning=FALSE, results='hide'}
+
+# fun_box <- for(i in 1:length(spp)){
+#   
+#   sp <- assign(paste0("",i), spp[[i]])
+#   
+#   boxdat <- filter(dat, Species == sp) 
+#   
+# boxbase <- ggplot(boxdat, aes(y = dryroottoshoot, x= Rate, fill = Rate))+
+#   geom_boxplot() +
+#   #xlab(paste0("",i)) +
+#   ylab('Root to Shoot Ratio') +
+#   ggtitle(paste0(sp)) +
+#   scale_fill_discrete(name = "Osmocote Rates")+
+#   geom_jitter(aes(col = Rate), size= 1.5, alpha=0.9, width = 0.2) 
+# print(boxbase)
+# 
+# 
+# }
+
+```
+
+
